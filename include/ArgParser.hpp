@@ -1,34 +1,37 @@
-#include <cstring>
-#include <string>
-#include <vector>
+#pragma once
+
+#include <iostream>
 
 #include <ArgumentParser.hpp>
 
-struct Command {
-    const char param1;
-    const std::string& param2;
-    const std::string& description;
-};
 
-class GetMethodsHandler {
+namespace ArgumentParser {
+class GetMethodsHandler {   //CHECK
 protected:
-    std::string Get(const std::string& param, int32_t index) {
-        
+    std::string Get(const std::string& param, int32_t index = 0) {
+        for (size_t i = 0; i < split_string.size(); ++i) {
+            if (param == split_string[i] || param == split_string[i])
+                return split_string[i + index];
+        }
         return "2";
     }
 };
 
-class AddMethodsHandler { //ADD in some container where will be --commands (may be of their types)
+class AddMethodsHandler {   //CHECK
 protected:
-    Command Add(const char param1, const std::string& param2, const std::string& description = "") {
-        return Command{param1, param2, description};
+    void Add(const char param1, const std::string& param2, const std::string& description = "") {
+        if (!CheckCommand(param1, param2))
+            std::cout << "ERROR:" << std::endl;
+        commands.push_back(Command{.param1 = param1, .param2 = param2, .description = description});
     }
-    Command Add(const std::string& param2, const std::string& description = "") {
-        return Command{.param2 = param2, .description = description};
+    void Add(const std::string& param2, const std::string& description = "") {
+        if (!CheckCommand(param2))
+            std::cout << "ERROR:" << std::endl;
+        commands.push_back(Command{.param2 = param2, .description = description});
     }
 };
 
-class ArgumentParser::ArgParser : private AddMethodsHandler, private GetMethodsHandler {
+class ArgParser : private AddMethodsHandler, private GetMethodsHandler {
 public:
     std::string name;
     ArgParser(std::string s) : name(s) {}
@@ -69,7 +72,7 @@ public:
     // void HelpDescription();
     ArgParser& Positional();
 };
-
+}
 
 
 

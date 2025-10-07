@@ -1,9 +1,8 @@
-#include <functional>
-//#include "ArgParser.hpp"
-#include "ArgParser.hpp"
-
 #include <iostream>
+#include <functional>
 #include <numeric>
+
+#include "ArgParser.hpp"
 
 struct Options {
     bool sum = false;

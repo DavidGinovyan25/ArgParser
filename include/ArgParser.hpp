@@ -4,16 +4,23 @@
 
 #include <ArgumentParser.hpp>
 
+/*
+1 - check ADD/GET methods
+2 - write StoreValue(s) and Default interface
+3 - fix ArgParser and ArgumentParser classes
+*/
 
 namespace ArgumentParser {
 class GetMethodsHandler {   //CHECK
 protected:
-    std::string Get(const std::string& param, int32_t index = 0) {
-        for (size_t i = 0; i < split_string.size(); ++i) {
-            if (param == split_string[i] || param == split_string[i])
+    const std::string kStringInvalidKey = "false";
+
+    const std::string& Get(const std::string& param, int index = 0) {
+        for (int i = 0; i < split_string.size(); ++i) {
+            if (param == split_string[i])
                 return split_string[i + index];
-        }
-        return "2";
+        } 
+        return kStringInvalidKey;
     }
 };
 
@@ -42,18 +49,16 @@ public:
     template <typename T>
     ArgParser& Default(T param);    /*default argument*/
      
-    // template <typename T>
-    // ArgParser& StoreValue(T value);
+    template <typename T>
+    ArgParser& StoreValue(T value);
 
-    // template <typename T>
-    // ArgParser& StoreValues(std::vector<T> values);
+    template <typename T>
+    ArgParser& StoreValues(std::vector<T> values);
 
-    ArgParser& MultiValue(int32_t min_args_count = 0);  /*some values*/ 
+    ArgParser& MultiValue(int min_args_count = 0);
 
-    const std::string& GetStringValue(const std::string& param, int32_t index = 0);
-
-    int32_t GetIntValue(const std::string& param, int32_t index = 0);
-
+    const std::string& GetStringValue(const std::string& param, int index = 0);
+    int GetIntValue(const std::string& param, int index = 0);
     bool GetFlag(const std::string& param);
 
     ArgParser& AddIntArgument(const char param1, const std::string& param2, const std::string& description = "");

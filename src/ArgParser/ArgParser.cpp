@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include <ArgParser.hpp>
 
 namespace ArgumentParser {
@@ -6,7 +8,7 @@ namespace ArgumentParser {
         return *this;
     }
 
-    ArgParser& ArgParser::MultiValue(int32_t min_args_count) {  
+    ArgParser& ArgParser::MultiValue(int min_args_count) {  
         return *this; 
     }
 
@@ -20,7 +22,7 @@ namespace ArgumentParser {
 
     bool ArgParser::Parse(int argc, char *argv[]) {
         std::vector<std::string> v;
-        for (size_t i = 0; i < argc; ++i) {
+        for (int i = 0; i < argc; ++i) {
             v.push_back(argv[i]);
         }
         if (Parse(v))
@@ -42,15 +44,24 @@ namespace ArgumentParser {
 
 
 
-    const std::string& ArgParser::GetStringValue(const std::string& param, int32_t index) {
-        return param;
+
+
+
+
+    const std::string& ArgParser::GetStringValue(const std::string& param, int index) {
+        return Get(param, index);
     }
 
-    int32_t ArgParser::GetIntValue(const std::string& param, int32_t index) {
-        return 1;
+    int ArgParser::GetIntValue(const std::string& param, int index) {
+        int kIntInvalidKey = -1;
+        if (Get(param, index) == kStringInvalidKey)
+            return kIntInvalidKey;
+        return std::strtol(param.c_str(), nullptr, 10);
     }
 
-    bool ArgParser::GetFlag(const std::string& param) {
+    bool ArgParser::GetFlag(const std::string& param) { 
+        if (Get(param) == kStringInvalidKey)
+            return false;
         return true;
     }
 

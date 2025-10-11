@@ -1,68 +1,43 @@
-#include <cstdlib>
+#include <cstring>
 
 #include <ArgParser.hpp>
 
 namespace ArgumentParser {
-    template <typename T>
-    ArgParser& ArgumentParser::ArgParser::Default(T value) {  
-        return *this;
-    }
-
     ArgParser& ArgParser::MultiValue(int min_args_count) {  
         return *this; 
     }
 
-    bool ArgParser::Parse(std::vector<std::string> v) {
-        for (std::string arg : v) {
-            if (arg != "true") 
-                return false;
+    bool ArgParser::Parse(std::vector<std::string> v) { //TAKE INTO ACCOUNT POSITIONAL, MULTIVALUE, DEFAULT 
+        for (int i = 1; i < v.size(); ++i) {
+            /*
+            1 - check program name
+            2 - parse short and long flags with their values
+            3 - parse 
+            */
         }
         return true;
     }
-
     bool ArgParser::Parse(int argc, char *argv[]) {
-        std::vector<std::string> v;
         for (int i = 0; i < argc; ++i) {
-            v.push_back(argv[i]);
+            split_string.push_back(argv[i]);
         }
-        if (Parse(v))
+        if (!Parse(split_string))
             return false ;
         return true;
     }
 
-    // template <typename T>
-    // ArgParser& ArgParser::StoreValue(T value) {
-    //     ArgumentParser::value = value;
-    //     return *this;
-    // }
-
-    // template <typename T>
-    // ArgParser& ArgParser::StoreValues(std::vector<T> values) {
-    //     std::copy(ArgumentParser::values.begin(), ArgumentParser::values.end(), v.begin());
-    //     return *this;
-    // }
-
-
-
-
-
-
-
-    const std::string& ArgParser::GetStringValue(const std::string& param, int index) {
-        return Get(param, index);
+    const std::string& ArgParser::GetStringValue(const std::string& param, int index) { 
+        int value_index = Get(param, index);
+        return (value_index != kIntMissingValue) ? split_string[value_index] : kStringMissingValue; 
     }
-
     int ArgParser::GetIntValue(const std::string& param, int index) {
-        int kIntInvalidKey = -1;
-        if (Get(param, index) == kStringInvalidKey)
-            return kIntInvalidKey;
-        return std::strtol(param.c_str(), nullptr, 10);
+        int value_index = Get(param, index);
+        return (value_index != kIntMissingValue) 
+            ? std::strtol(split_string[value_index].c_str(), nullptr, 10) 
+            : kIntMissingValue; 
     }
-
-    bool ArgParser::GetFlag(const std::string& param) { 
-        if (Get(param) == kStringInvalidKey)
-            return false;
-        return true;
+    bool ArgParser::GetFlag(const std::string& param) {
+        return (GetFlagValue(param) != kIntMissingValue) ? true : false;
     }
 
     ArgParser& ArgParser::AddIntArgument(const char param1, const std::string& param2, const std::string& description) {
@@ -106,9 +81,9 @@ namespace ArgumentParser {
             return false;
         return true;
     }
+    void ArgParser::HelpDescription() {
 
-    // void ArgParser::HelpDescription() {
-    // }
+    }
 
     ArgParser& ArgParser::Positional() {
         return *this;

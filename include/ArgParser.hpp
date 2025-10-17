@@ -26,14 +26,12 @@ public:
 
 class GetMethodsHandler {   //THINK ABOUT ARCH
 public:  
-    CommandHandler command_handler;
     static constexpr int kIndexShift = 1;
     static constexpr int kIntMissingValue = -1;
     static constexpr const char* kStringMissingValue = "[MISSING VALUE]";
-    std::vector<std::string> split_string;
 
-    int GetValueIndex(const std::string& param, int index = 0);
-    int GetFlagIndex(const std::string& param);
+    int GetValueIndex(const std::vector<std::string>& split_string, const std::string& param, int index = 0);
+    int GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param);
 };
 
 class AddMethodsHandler {
@@ -42,9 +40,12 @@ public:
     void Add(CommandsContainer& commands, const std::string& param2, const std::string& description = "");
 };
 
-class ArgParser : public AddMethodsHandler, private GetMethodsHandler, private DefaultMethodsHandler {
+class ArgParser : public AddMethodsHandler, private DefaultMethodsHandler {
 private:
     StoreHandler store_handler;
+    CommandHandler command_handler;
+    GetMethodsHandler get_handler;
+    std::vector<std::string> split_string;
 public:
     std::string name;
     ArgParser() = default;
@@ -90,15 +91,18 @@ public:
 }
 
 namespace ArgumentParser {  
-inline int GetMethodsHandler::GetFlagIndex(const std::string& param) {
+inline int GetMethodsHandler::GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param) {
     for (int i = 0; i < split_string.size(); ++i) {
         if (param == split_string[i])
             return i;
     } 
     return kIntMissingValue;
 }
-inline int GetMethodsHandler::GetValueIndex(const std::string& param, int index) {
-    int index_flag = GetFlagIndex(param);
+inline int GetMethodsHandler::GetValueIndex(
+        const std::vector<std::string>& split_string, 
+        const std::string& param, 
+        int index) {
+    int index_flag = GetFlagIndex(split_string, param);
     return (index_flag != kIntMissingValue) ? index_flag + index + kIndexShift : index_flag;
 }
 

@@ -20,7 +20,7 @@ public:
 
     bool CheckCommand(const char param1, const std::string& param2);
     bool CheckCommand(const std::string& param2);
-    bool IsFlag(const char* flag, const char* string);
+    bool IsCommand(const char* flag, const char* string);
 
 };
 }
@@ -55,7 +55,7 @@ inline bool CommandHandler::CheckCommand(const std::string& param2) {
     }        
     return false;
 }
-inline bool CommandHandler::IsFlag(const char* flag, const char* string) {
+inline bool CommandHandler::IsCommand(const char* flag, const char* string) {
     return (std::strncmp(flag, string, sizeof(string)) == 0) ? true : false;
 }         
 }

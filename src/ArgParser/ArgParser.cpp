@@ -47,22 +47,26 @@ bool ArgParser::Parse(int argc, char *argv[]) {
 }
 
 std::string ArgParser::GetStringValue(const std::string& param, int index) { 
-    int value_index = GetValueIndex(param, index);
+    CommandHandler command_handler;
+    int value_index = get_handler.GetValueIndex(split_string, param, index);
     if (command_handler.CheckCommand(param))
-        return (value_index != kIntMissingValue) ? split_string[value_index] : kStringMissingValue; 
-    return kStringMissingValue;
+        return (value_index != get_handler.kIntMissingValue) 
+            ? split_string[value_index] 
+            : get_handler.kStringMissingValue; 
+    return get_handler.kStringMissingValue;
 }
 int ArgParser::GetIntValue(const std::string& param, int index) {
-    int value_index = GetValueIndex(param, index);
+    CommandHandler command_handler;
+    int value_index = get_handler.GetValueIndex(split_string, param, index);
     if (command_handler.CheckCommand(param))
-        return (value_index != kIntMissingValue) 
+        return (value_index != get_handler.kIntMissingValue) 
             ? std::strtol(split_string[value_index].c_str(), nullptr, 10) 
-            : kIntMissingValue; 
-    return kIntMissingValue;
+            : get_handler.kIntMissingValue; 
+    return get_handler.kIntMissingValue;
 }
 bool ArgParser::GetFlag(const std::string& param) {
     if (command_handler.CheckCommand(param))
-        return (GetFlagIndex(param) != kIntMissingValue) ? true : false;
+        return (get_handler.GetFlagIndex(split_string, param) != get_handler.kIntMissingValue) ? true : false;
     return false;
 }
 

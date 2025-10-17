@@ -46,7 +46,7 @@ bool ArgParser::Parse(int argc, char *argv[]) {
     return Parse(split_string) ? true : false;
 }
 
-const std::string& ArgParser::GetStringValue(const std::string& param, int index) { 
+std::string ArgParser::GetStringValue(const std::string& param, int index) { 
     int value_index = GetValueIndex(param, index);
     if (command_handler.CheckCommand(param))
         return (value_index != kIntMissingValue) ? split_string[value_index] : kStringMissingValue; 
@@ -102,13 +102,6 @@ ArgParser& ArgParser::AddHelp(const std::string& param2, const std::string& desc
     return *this;
 }
 
-bool ArgParser::Help() {
-    return 0 == 0 ? true : false;
-}
-void ArgParser::HelpDescription() {
-
-}   
-
 ArgParser& ArgParser::Default(int value) {
     DefaultValue(command_handler.int_commands, std::to_string(value));
     return *this;
@@ -123,15 +116,15 @@ ArgParser& ArgParser::Default(bool value) {
 }
 
 ArgParser& ArgParser::StoreValue(int& val) {    //CHECK
-    store_handler.StoreValueMethod(int_value, val);
+    store_handler.StoreValueMethod(store_handler.int_value_ref, val);
     return *this;
 }
 ArgParser& ArgParser::StoreValue(std::string& val) {    //CHECK
-    store_handler.StoreValueMethod(string_value, val);
+    store_handler.StoreValueMethod(store_handler.string_value_ref, val);
     return *this;
 }
 ArgParser& ArgParser::StoreValue(bool& val) {    //CHECK
-    store_handler.StoreValueMethod(bool_value, val);
+    store_handler.StoreValueMethod(store_handler.bool_value_ref, val);
     return *this;
 }
 
@@ -147,4 +140,13 @@ ArgParser& ArgParser::StoreValues(const std::vector<bool>& val) {    //CHECK
     store_handler.StoreValuesMethod(store_handler.bool_values, val);
     return *this;
 }  
+
+bool ArgParser::Help() {
+    return (!command_handler.help_commands.empty()) ? true : false;
+}
+void ArgParser::HelpDescription() {
+    for (Command command : command_handler.help_commands) {
+        std::cout << command.param1 << " " << command.param2 << " " << command.description;
+    }
+}   
 }

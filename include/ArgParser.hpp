@@ -1,42 +1,35 @@
 #include <iostream>
+#include <functional>
+#include <optional>
+#include <variant>
 
 #include "ArgumentParser.hpp"
 
-/*
-2 - WRITE MULTIPLE AND POSITIONAL FUNCION
-3 - WRITE PARSE FUNCTION 
-*/
-
-/*
-1 - write all methods
-*/
-
 namespace ArgumentParser {
-class DefaultMethods {
+class DefaultMethodsHandler {
 public:
     void DefaultValue(CommandsContainer& commands, const std::string& value); 
 };
 
-class StoreHandler {
+class StoreHandler {    //THINK ABOUT ARCH - REMAKE
 public:
-    int* int_value = nullptr;
-    std::string* string_value = nullptr;
-    bool* bool_value = nullptr;
+    std::optional<std::reference_wrapper<int>> int_value_ref;
+    std::optional<std::reference_wrapper<std::string>> string_value_ref;
+    std::optional<std::reference_wrapper<bool>> bool_value_ref;
     std::vector<int64_t> int_values;
     std::vector<std::string> string_values;
     std::vector<bool> bool_values;
 
-    template <typename T> void StoreValueMethod(T* ptr_value, T val);
+    template <typename T> void StoreValueMethod(std::optional<std::reference_wrapper<T>>& ref, T& val);
     template <typename T> void StoreValuesMethod(std::vector<T>& t_values, const std::vector<T>& val);
 };
 
-class GetMethodsHandler {
+class GetMethodsHandler {   //THINK ABOUT ARCH
 public:  
     CommandHandler command_handler;
-protected:
-    const int kIndexShift = 1;
-    const int kIntMissingValue = -1;
-    const std::string& kStringMissingValue = "skibidi";
+    static constexpr int kIndexShift = 1;
+    static constexpr int kIntMissingValue = -1;
+    static constexpr const char* kStringMissingValue = "[MISSING VALUE]";
     std::vector<std::string> split_string;
 
     int GetValueIndex(const std::string& param, int index = 0);
@@ -44,15 +37,16 @@ protected:
 };
 
 class AddMethodsHandler {
-protected:
+public:
     void Add(CommandsContainer& commands, const char param1, const std::string& param2, const std::string& description = "");
     void Add(CommandsContainer& commands, const std::string& param2, const std::string& description = "");
 };
 
-class ArgParser : public AddMethodsHandler, private GetMethodsHandler, private DefaultMethods, private StoreHandler {
+class ArgParser : public AddMethodsHandler, private GetMethodsHandler, private DefaultMethodsHandler {
+private:
+    StoreHandler store_handler;
 public:
     std::string name;
-    StoreHandler store_handler;
     ArgParser() = default;
     ArgParser(std::string s) : name(std::move(s)) {}
 
@@ -61,6 +55,13 @@ public:
 
     bool Help();
     void HelpDescription();
+
+    bool GetFlag(const std::string& param);
+    int GetIntValue(const std::string& param, int index = 0);
+    std::string GetStringValue(const std::string& param, int index = 0);
+
+    ArgParser& MultiValue(int min_args_count = 2);
+    ArgParser& Positional();
 
     ArgParser& Default(int value);
     ArgParser& Default(std::string value);
@@ -73,13 +74,6 @@ public:
     ArgParser& StoreValues(const std::vector<int64_t>& val);
     ArgParser& StoreValues(const std::vector<std::string>& val);
     ArgParser& StoreValues(const std::vector<bool>& val);
-
-    bool GetFlag(const std::string& param);
-    int GetIntValue(const std::string& param, int index = 0);
-    const std::string& GetStringValue(const std::string& param, int index = 0);
-
-    ArgParser& MultiValue(int min_args_count = 2);
-    ArgParser& Positional();
 
     ArgParser& AddIntArgument(const char param1, const std::string& param2, const std::string& description = "");
     ArgParser& AddIntArgument(const std::string& param2, const std::string& description = "");
@@ -124,13 +118,18 @@ inline void AddMethodsHandler::Add(
         commands.push_back(Command{.param2 = param2, .description = description});
 }
 
-inline void DefaultMethods::DefaultValue(CommandsContainer& commands, const std::string& value) {
+inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
     commands[commands.size() - 1].param2 += ("=" + value);
 }
 
 template <typename T> 
-inline void StoreHandler::StoreValueMethod(T* ptr_value, T val) {
-    ptr_value = &val;
+inline void StoreHandler::StoreValueMethod(std::optional<std::reference_wrapper<T>>& ref, T& val) {
+    static_assert(
+            std::is_same_v<T, int> || 
+            std::is_same_v<T, std::string> || 
+            std::is_same_v<T, bool>,
+            "StoreValueMethodError: can supporte only int, std::string, bool types");
+    ref = std::ref(val);
 }
 template <typename T> 
 inline void StoreHandler::StoreValuesMethod(std::vector<T>& t_values, const std::vector<T>& val) {

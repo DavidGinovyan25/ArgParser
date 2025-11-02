@@ -6,25 +6,29 @@
 #include "ArgumentParser.hpp"
 
 namespace ArgumentParser {
-class DefaultMethodsHandler {
+// class DefaultMethodsHandler {
+// public:
+//     void DefaultValue(CommandsContainer& commands, const std::string& value); 
+// };
+
+class StoreHandler {
 public:
-    void DefaultValue(CommandsContainer& commands, const std::string& value); 
+    template<typename T>
+    using op_ref = std::optional<std::reference_wrapper<T>>;
+
+    op_ref<int> int_value_ref;
+    op_ref<std::string> string_value_ref;
+    op_ref<bool> bool_value_ref;
+
+    op_ref<std::vector<int64_t>> int_values_ref;
+    op_ref<std::vector<std::string>> string_values_ref;
+    op_ref<std::vector<bool>> bool_values_ref;
+
+    template <typename T> void StoreValueMethod(op_ref<T>& type_value_ref, T& val);
+    template <typename T> void StoreValuesMethod(op_ref<std::vector<T>>& type_values_ref, std::vector<T>& val);
 };
 
-class StoreHandler {    //THINK ABOUT ARCH - REMAKE
-public:
-    std::optional<std::reference_wrapper<int>> int_value_ref;
-    std::optional<std::reference_wrapper<std::string>> string_value_ref;
-    std::optional<std::reference_wrapper<bool>> bool_value_ref;
-    std::vector<int64_t> int_values;
-    std::vector<std::string> string_values;
-    std::vector<bool> bool_values;
-
-    template <typename T> void StoreValueMethod(std::optional<std::reference_wrapper<T>>& ref, T& val);
-    template <typename T> void StoreValuesMethod(std::vector<T>& t_values, const std::vector<T>& val);
-};
-
-class GetMethodsHandler {   //THINK ABOUT ARCH
+class GetMethodsHandler   {
 public:  
     static constexpr int kIndexShift = 1;
     static constexpr int kIntMissingValue = -1;
@@ -34,16 +38,15 @@ public:
     int GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param);
 };
 
-class AddMethodsHandler {
+class AddMethodsHandler : public  CommandHandler {
 public:
-    void Add(CommandsContainer& commands, const char param1, const std::string& param2, const std::string& description = "");
-    void Add(CommandsContainer& commands, const std::string& param2, const std::string& description = "");
+    void Add(ContainerType type, const char param1, const std::string& param2, const std::string& description = "");
+    void Add(ContainerType type, const std::string& param2, const std::string& description = "");
 };
 
-class ArgParser : public AddMethodsHandler, private DefaultMethodsHandler {
-private:
+class ArgParser : public AddMethodsHandler { //,private DefaultMethodsHandler {
+public:
     StoreHandler store_handler;
-    CommandHandler command_handler;
     GetMethodsHandler get_handler;
     std::vector<std::string> split_string;
 public:
@@ -51,8 +54,8 @@ public:
     ArgParser() = default;
     ArgParser(std::string s) : name(std::move(s)) {}
 
-    bool Parse(int argc, char *argv[]); //check key on correct format
-    bool Parse(std::vector<std::string> v); //check key on correct format 
+    bool Parse(int argc, char *argv[]);
+    bool Parse(std::vector<std::string> v);
 
     bool Help();
     void HelpDescription();
@@ -61,20 +64,22 @@ public:
     int GetIntValue(const std::string& param, int index = 0);
     std::string GetStringValue(const std::string& param, int index = 0);
 
-    ArgParser& MultiValue(int min_args_count = 2);
+    ArgParser& MultiValue(int min_args_count = 0);
     ArgParser& Positional();
 
-    ArgParser& Default(int value);
-    ArgParser& Default(std::string value);
-    ArgParser& Default(bool value);
+    template<typename T>
+    ArgParser& Default(T value);
+    // ArgParser& Default(int value);
+    // ArgParser& Default(std::string value);
+    // ArgParser& Default(bool value);
         
     ArgParser& StoreValue(int& val);
     ArgParser& StoreValue(std::string& val);
     ArgParser& StoreValue(bool& val);
 
-    ArgParser& StoreValues(const std::vector<int64_t>& val);
-    ArgParser& StoreValues(const std::vector<std::string>& val);
-    ArgParser& StoreValues(const std::vector<bool>& val);
+    ArgParser& StoreValues(std::vector<int64_t>& val);
+    ArgParser& StoreValues(std::vector<std::string>& val);
+    ArgParser& StoreValues(std::vector<bool>& val);
 
     ArgParser& AddIntArgument(const char param1, const std::string& param2, const std::string& description = "");
     ArgParser& AddIntArgument(const std::string& param2, const std::string& description = "");
@@ -107,36 +112,47 @@ inline int GetMethodsHandler::GetValueIndex(
 }
 
 inline void AddMethodsHandler::Add(
-        CommandsContainer& commands, 
+        ContainerType type, 
         const char param1, 
         const std::string& param2, 
         const std::string& description) {
-    //if (!command_handler.CheckCommand(param1, param2))
-    commands.push_back(Command{.param1 = param1, .param2 = param2, .description = description});    
+    if (!CheckCommand(param1) ||
+        !CheckCommand(param2))
+        commands.push_back(Command{.type = type, .param1 = param1, .param2 = param2, .description = description});    
 }
 inline void AddMethodsHandler::Add(
-        CommandsContainer& commands, 
+        ContainerType type, 
         const std::string& param2, 
         const std::string& description) {
-    //if (!command_handler.CheckCommand(param2))
-        commands.push_back(Command{.param2 = param2, .description = description});
+    if (!CheckCommand(param2))
+        commands.push_back(Command{.type = type, .param2 = param2, .description = description});
+    
 }
 
-inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
-    commands[commands.size() - 1].param2 += ("=" + value);
-}
+// inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
+//     commands[commands.size() - 1].param2 += ("=" + value);
+// }
+// inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
+//     commands[commands.size() - 1].param2 += ("=" + value);
+// }
+
 
 template <typename T> 
-inline void StoreHandler::StoreValueMethod(std::optional<std::reference_wrapper<T>>& ref, T& val) {
+inline void StoreHandler::StoreValueMethod(op_ref<T>& type_value_ref, T& value) {
     static_assert(
             std::is_same_v<T, int> || 
             std::is_same_v<T, std::string> || 
             std::is_same_v<T, bool>,
             "StoreValueMethodError: can supporte only int, std::string, bool types");
-    ref = std::ref(val);
+    type_value_ref = std::ref(value);
 }
 template <typename T> 
-inline void StoreHandler::StoreValuesMethod(std::vector<T>& t_values, const std::vector<T>& val) {
-    t_values.insert(t_values.end(), val.begin(), val.end());
+inline void StoreHandler::StoreValuesMethod(op_ref<std::vector<T>>& type_values_ref, std::vector<T>& values) {
+    static_assert(
+            std::is_same_v<T, int64_t> || 
+            std::is_same_v<T, std::string> || 
+            std::is_same_v<T, bool>,
+            "StoreValueMethodError: can supporte only int, std::string, bool types");
+    type_values_ref = std::ref(values);
 }
 }

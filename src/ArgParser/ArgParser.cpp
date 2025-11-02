@@ -17,30 +17,30 @@ ArgParser& ArgParser::Positional() {
 - parse short and long flags with their values
 - process flags with and without "=" 
 - parse several flags with their velues
-- add multivalue, positional, default processing 
+- ADD STOREVALUE(S), MULTIVALUE, POSITIONAL PROCCESING 
 - parse -ac flags
 */
 
 bool ArgParser::Parse(std::vector<std::string> v) {
     if (!split_string.empty())
         split_string = v;
-    // for (int i = 0; i < split_string.size(); ++i) {
-    //     if (command_handler.IsCommand(split_string[i].c_str(), "--") || command_handler.IsCommand(split_string[i].c_str(), "-")) {
-    //         int index_sign_equal = split_string[i].find('=');
-    //         std::string param = split_string[i].substr(2, index_sign_equal - 1);
-    //         if (!command_handler.CheckCommand(param)) return false;
-    //         if (index_sign_equal != std::string::npos) {
-    //             if (command_handler.IsCommand(split_string[i].c_str(), "-")) {
-    //                 for (int j = split_string[i].size() - 1; 1; --j) {
-    //                     split_string.insert(split_string.begin() + i + 1, "-" + split_string[i].substr(split_string[i].size() - 1));
-    //                     split_string[i] = split_string[i].substr(0, split_string[i].size() - 2);
-    //                 }                    
-    //             }
-    //         }
-    //         split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_sign_equal));
-    //         split_string[i] = split_string[i].substr(0, index_sign_equal - 1);
-    //     }
-    // }
+    for (int i = 0; i < split_string.size(); ++i) {
+        if (IsCommand(split_string[i].c_str(), "--") || IsCommand(split_string[i].c_str(), "-")) {
+            int index_sign_equal = split_string[i].find('=');
+            std::string param = split_string[i].substr(2, index_sign_equal - 1);
+            if (!CheckCommand(param)) return false;
+            if (index_sign_equal != std::string::npos) {
+                if (IsCommand(split_string[i].c_str(), "-")) {
+                    for (int j = split_string[i].size() - 1; 1; --j) {
+                        split_string.insert(split_string.begin() + i + 1, "-" + split_string[i].substr(split_string[i].size() - 1));
+                        split_string[i] = split_string[i].substr(0, split_string[i].size() - 2);
+                    }                    
+                }
+            }
+            split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_sign_equal));
+            split_string[i] = split_string[i].substr(0, index_sign_equal - 1);
+        }
+    }
 
     
     return true;
@@ -52,26 +52,37 @@ bool ArgParser::Parse(int argc, char *argv[]) {
     return Parse(split_string) ? true : false;
 }
 
-std::string ArgParser::GetStringValue(const std::string& param, int index) { 
-    int value_index = get_handler.GetValueIndex(split_string, param, index);
-    if (CheckCommand(param))
-        return (value_index != get_handler.kIntMissingValue) 
-            ? split_string[value_index] 
-            : get_handler.kStringMissingValue; 
-    return get_handler.kStringMissingValue;
+// std::string ArgParser::GetStringValue(const std::string& param, int index) { 
+//     int value_index = get_handler.GetValueIndex(split_string, param, index);
+//     if (CheckCommand(param))
+//         return (value_index != get_handler.kIntMissingValue) 
+//             ? split_string[value_index] 
+//             : get_handler.kStringMissingValue; 
+//     return get_handler.kStringMissingValue;
+// }
+// int ArgParser::GetIntValue(const std::string& param, int index) {
+//     int value_index = get_handler.GetValueIndex(split_string, param, index);
+//     if (CheckCommand(param))
+//         return (value_index != get_handler.kIntMissingValue) 
+//             ? std::strtol(split_string[value_index].c_str(), nullptr, 10) 
+//             : get_handler.kIntMissingValue; 
+//     return get_handler.kIntMissingValue;
+// }
+// bool ArgParser::GetFlag(const std::string& param) {
+//     if (CheckCommand(param))
+//         return (get_handler.GetFlagIndex(split_string, param) != get_handler.kIntMissingValue) ? true : false;
+//     return false;
+// }
+
+std::optional<std::string> ArgParser::GetStringValue(const std::string& param, int index) { 
+    return get_handler.GetFlagValue(param, index);
 }
-int ArgParser::GetIntValue(const std::string& param, int index) {
-    int value_index = get_handler.GetValueIndex(split_string, param, index);
-    if (CheckCommand(param))
-        return (value_index != get_handler.kIntMissingValue) 
-            ? std::strtol(split_string[value_index].c_str(), nullptr, 10) 
-            : get_handler.kIntMissingValue; 
-    return get_handler.kIntMissingValue;
+std::optional<int> ArgParser::GetIntValue(const std::string& param, int index) {
+    return (get_handler.GetFlagValue(param, index) != std::nullopt) 
+        ? std::optional<int>{std::strtol(get_handler.kStringMissingValue, nullptr, 10)} : std::nullopt;
 }
 bool ArgParser::GetFlag(const std::string& param) {
-    if (CheckCommand(param))
-        return (get_handler.GetFlagIndex(split_string, param) != get_handler.kIntMissingValue) ? true : false;
-    return false;
+    return (get_handler.GetFlagValue(param) != std::nullopt) ? true : false;
 }
 
 // ArgParser& ArgParser::AddIntArgument(const char param1, const std::string& param2, const std::string& description) {
@@ -146,23 +157,17 @@ ArgParser& ArgParser::AddHelp(const std::string& param2, const std::string& desc
 }
 
 // ArgParser& ArgParser::Default(int value) {
-//     DefaultValue(command_handler.int_commands, std::to_string(value));
+//     DefaultValue(commands, std::to_string(value));
 //     return *this;
 // }
 // ArgParser& ArgParser::Default(std::string value) {
-//     DefaultValue(command_handler.string_commands, value);
+//     DefaultValue(commands, value);
 //     return *this;
 // }
 // ArgParser& ArgParser::Default(bool value) {
-//     DefaultValue(command_handler.flag_commands, std::to_string(value));
+//     DefaultValue(commands, std::to_string(value));
 //     return *this;
 // }
-template <typename T>
-ArgParser& ArgParser::Default(T value) {
-    commands.back().param2 
-        += ("=" + (std::is_same_v<T, std::string>) ? value : std::to_string(value));
-    return *this;
-}
 
 ArgParser& ArgParser::StoreValue(int& val) {    
     store_handler.StoreValueMethod<>(store_handler.int_value_ref, val);

@@ -6,7 +6,7 @@
 #include "ArgumentParser.hpp"
 
 namespace ArgumentParser {
-// class DefaultMethodsHandler {
+//class DefaultMethodsHandler {
 // public:
 //     void DefaultValue(CommandsContainer& commands, const std::string& value); 
 // };
@@ -28,23 +28,23 @@ public:
     template <typename T> void StoreValuesMethod(op_ref<std::vector<T>>& type_values_ref, std::vector<T>& val);
 };
 
-class GetMethodsHandler   {
+class GetMethodsHandler : public virtual CommandHandler  {
 public:  
-    static constexpr int kIndexShift = 1;
+    //static constexpr int kIndexShift = 1;
     static constexpr int kIntMissingValue = -1;
     static constexpr const char* kStringMissingValue = "[MISSING VALUE]";
-
-    int GetValueIndex(const std::vector<std::string>& split_string, const std::string& param, int index = 0);
-    int GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param);
+    std::optional<std::string> GetFlagValue(const std::string& flag, int index = 0);
+    // int GetValueIndex(const std::vector<std::string>& split_string, const std::string& param, int index = 0);
+    // int GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param);
 };
 
-class AddMethodsHandler : public  CommandHandler {
+class AddMethodsHandler : public virtual CommandHandler {
 public:
     void Add(ContainerType type, const char param1, const std::string& param2, const std::string& description = "");
     void Add(ContainerType type, const std::string& param2, const std::string& description = "");
 };
 
-class ArgParser : public AddMethodsHandler { //,private DefaultMethodsHandler {
+class ArgParser : public AddMethodsHandler {//, private DefaultMethodsHandler {
 public:
     StoreHandler store_handler;
     GetMethodsHandler get_handler;
@@ -61,13 +61,13 @@ public:
     void HelpDescription();
 
     bool GetFlag(const std::string& param);
-    int GetIntValue(const std::string& param, int index = 0);
-    std::string GetStringValue(const std::string& param, int index = 0);
+    std::optional<int> GetIntValue(const std::string& param, int index = 0);
+    std::optional<std::string> GetStringValue(const std::string& param, int index = 0);
 
     ArgParser& MultiValue(int min_args_count = 0);
     ArgParser& Positional();
 
-    template<typename T>
+    template<typename T> 
     ArgParser& Default(T value);
     // ArgParser& Default(int value);
     // ArgParser& Default(std::string value);
@@ -96,19 +96,27 @@ public:
 }
 
 namespace ArgumentParser {  
-inline int GetMethodsHandler::GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param) {
-    for (int i = 0; i < split_string.size(); ++i) {
-        if (param == split_string[i])
-            return i;
-    } 
-    return kIntMissingValue;
-}
-inline int GetMethodsHandler::GetValueIndex(
-        const std::vector<std::string>& split_string, 
-        const std::string& param, 
-        int index) {
-    int index_flag = GetFlagIndex(split_string, param);
-    return (index_flag != kIntMissingValue) ? index_flag + index + kIndexShift : index_flag;
+// inline int GetMethodsHandler::GetFlagIndex(const std::vector<std::string>& split_string, const std::string& param) {
+//     for (int i = 0; i < split_string.size(); ++i) {
+//         if (param == split_string[i])
+//             return i;
+//     } 
+//     return kIntMissingValue;
+// }
+// inline int GetMethodsHandler::GetValueIndex(
+//         const std::vector<std::string>& split_string, 
+//         const std::string& param, 
+//         int index) {
+//     int index_flag = GetFlagIndex(split_string, param);
+//     return (index_flag != kIntMissingValue) ? index_flag + index + kIndexShift : index_flag;
+// }
+
+inline std::optional<std::string> GetMethodsHandler::GetFlagValue(const std::string& flag, int index) {
+    for (int i = 0; i < commands.size(); ++i) {
+        if (flag == commands[i].param2 && index < commands[i].args[index].size())
+            return commands[i].args[index];
+    }
+    return std::nullopt;
 }
 
 inline void AddMethodsHandler::Add(
@@ -130,10 +138,7 @@ inline void AddMethodsHandler::Add(
 }
 
 // inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
-//     commands[commands.size() - 1].param2 += ("=" + value);
-// }
-// inline void DefaultMethodsHandler::DefaultValue(CommandsContainer& commands, const std::string& value) {
-//     commands[commands.size() - 1].param2 += ("=" + value);
+//     commands.back().param2 += ("=" + value);
 // }
 
 
@@ -154,5 +159,14 @@ inline void StoreHandler::StoreValuesMethod(op_ref<std::vector<T>>& type_values_
             std::is_same_v<T, bool>,
             "StoreValueMethodError: can supporte only int, std::string, bool types");
     type_values_ref = std::ref(values);
+}
+
+template <typename T> inline ArgParser& ArgParser::Default(T value) { 
+    commands.back().param2 += ("=" + std::to_string(value));
+    return *this;
+}
+template <> inline ArgParser& ArgParser::Default<std::string>(std::string value) { 
+    commands.back().param2 += ("=" + value);
+    return *this;
 }
 }

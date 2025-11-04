@@ -3,7 +3,7 @@
 #include <vector>
 
 namespace ArgumentParser {
-enum class ContainerType {
+enum class CommandType {
     INT_T,
     STRING_T,
     FLAG_T,
@@ -12,7 +12,7 @@ enum class ContainerType {
 
 struct Command {
     int min_args_count = 0;
-    ContainerType type;
+    CommandType type;
     char param1;
     std::string param2;
     std::string description;

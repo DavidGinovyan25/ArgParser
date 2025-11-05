@@ -11,75 +11,78 @@ ArgParser& ArgParser::Positional() {
     current_cmd->positional = true;
     return *this;
 }  
+    // for (std::string s: split_string) {
+    //     std::cout << s << " ";
+    // }
+
+    // for (const auto& [key, cmd]: commands) {
+    //     std::cout << cmd.param2;
+    //     for (const auto& arg: cmd.args) {
+    //         std::cout << " " << arg;
+    //     }
+    //     std::cout << std::endl;
+    // }
+
 
 bool ArgParser::Parse(std::vector<std::string> v) {
     if (!split_string.empty())
         split_string = v;
+
+    auto is_not_command = [&](int i){
+        return !IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-");};
+
+    auto tokenize = [&](int start, int finish, int i) {
+        split_string.insert(split_string.begin() + i + 1, split_string[i].substr(start));
+        split_string[i] = split_string[i].substr(0, finish);};
+
     for (int i = 0; i < split_string.size(); ++i) {
-        if (!IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-")) 
+        if (is_not_command(i)) 
             continue;
         size_t index_equal_sign = split_string[i].find('=');
         if (index_equal_sign != std::string::npos) {
-            split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_equal_sign + 1));
-            split_string[i] = split_string[i].substr(0, index_equal_sign);
+            tokenize(index_equal_sign + 1, index_equal_sign, i);
             continue;
         }
         if (IsCommand(split_string[i].c_str(), "--"))
             continue;
         while (split_string[i].size() > 2) {
-            int index_last_command = split_string[i].size() - 1;
-            split_string.insert(split_string.begin() + i + 1, "-" + split_string[i].substr(index_last_command));
-            split_string[i] = split_string[i].substr(0, index_last_command);    
+            tokenize(split_string[i].size() - 1, split_string[i].size() - 1, i);   
         }
     }
-    for (std::string s: split_string) {
-        std::cout << s << " ";
-    }
-    for (int i = 0;  i < split_string.size(); ++i) {//если некоманды будут идти первыми//если у команд нет аргументов 
-        if (!IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-")) 
+    for (int i = 0;  i < split_string.size(); ++i) {//если некоманды будут идти первыми//если у команд нет аргументов
+        if (is_not_command(i)) 
             continue;
+
         auto it_long = commands.find(split_string[i].substr(2));
         auto it_short = std::find_if(commands.begin(), commands.end(), 
-            [&](const auto& pair) { 
-                const Command& cmd = pair.second;
-                return cmd.param1 == split_string[i][1];
-        });
+            [&](const auto& pair) {return pair.second.param1 == split_string[i][1];});
         auto it = (it_short != commands.end()) ? it_short : (it_long != commands.end()) ? it_long : commands.end();
         if (it == commands.end()) {
             std::cout << "unreserved command " << split_string[i] << std::endl;
             return false;
         }
         if (it->second.min_args_count) {
-            while (i < split_string.size() - 1 && 
-                !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-")) {
-                    it->second.args.push_back(split_string[++i]);
+            while (i < split_string.size() - 1 && is_not_command(i + 1)) {
+                it->second.args.push_back(split_string[++i]);
             }
             continue;
         }
-        if (i < split_string.size() - 1 && 
-            !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-"))
+        if (i < split_string.size() - 1 && is_not_command(i + 1))
             it->second.args.push_back(split_string[++i]);
 
-        auto it_p = std::find_if(commands.begin(), commands.end(), [&](const auto& pair) {return pair.second.positional;});
-            if (it_p == commands.end()) {
-                std::cout << "extra arguments" << std::endl;
-                return false;
+        auto it_p = std::find_if(commands.begin(), commands.end(), 
+            [&](const auto& pair) {return pair.second.positional;});
+        if (it_p == commands.end()) {
+            std::cout << "extra arguments" << std::endl;
+            return false;
         }
-        while (i < split_string.size() - 1 && 
-            !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-")) {
+        while (i < split_string.size() - 1 && is_not_command(i + 1)) {
             it_p->second.args.push_back(split_string[++i]);
         }
         if (it->second.args.size() < it->second.min_args_count) {
             std::cout << "min args doeesnt have huy" << std::endl;
             return false;
         }
-    }
-    for (const auto& [key, cmd]: commands) {
-        std::cout << cmd.param2;
-        for (const auto& arg: cmd.args) {
-            std::cout << " " << arg;
-        }
-        std::cout << std::endl;
     }
     return true;
 }

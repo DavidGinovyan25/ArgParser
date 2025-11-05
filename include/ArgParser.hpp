@@ -31,6 +31,7 @@ public:
 
 class AddMethodsHandler : public virtual CommandHandler {
 public:
+    Command* current_cmd = nullptr;
     void Add(CommandType type, const char param1, const std::string& param2, const std::string& description = "");
     void Add(CommandType type, const std::string& param2, const std::string& description = "");
 };
@@ -47,7 +48,7 @@ public:
     bool Parse(std::vector<std::string> v);
 
     bool Help();
-    void HelpDescription();
+    std::string HelpDescription();
 
     bool GetFlag(const std::string& param);
     std::optional<int> GetIntValue(const std::string& param, int index = 0);
@@ -83,9 +84,9 @@ public:
 
 namespace ArgumentParser {
 inline std::optional<std::string> GetMethodsHandler::GetFlagValue(const std::string& flag, int index) {
-    for (int i = 0; i < commands.size(); ++i) {
-        if (flag == commands[i].param2 && index < commands[i].args.size())
-            return commands[i].args[index];
+    for (const auto& [key, cmd] : commands) {
+        if (flag == cmd.param2 && index < cmd.args.size())
+            return cmd.args[index];
     }
     return std::nullopt;
 }
@@ -95,16 +96,19 @@ inline void AddMethodsHandler::Add(
         const char param1, 
         const std::string& param2, 
         const std::string& description) {
-    if (!IsReservedCommand(std::to_string(param1)) && !IsReservedCommand(param2)) {
-        commands.push_back(Command{.type = type, .param1 = param1, .param2 = param2, .description = description});
+    if (!IsReservedCommand(std::string(1, param1)) && !IsReservedCommand(param2)) {
+        commands[param2] = Command{.type = type, .param1 = param1, .param2 = param2, .description = description};
+        current_cmd = &commands[param2];
     }
+    
 }
 inline void AddMethodsHandler::Add(
         CommandType type, 
         const std::string& param2, 
         const std::string& description) {
     if (!IsReservedCommand(param2)) {
-        commands.push_back(Command{.type = type, .param2 = param2, .description = description});
+        commands[param2] = Command{.type = type, .param2 = param2, .description = description};
+        current_cmd = &commands[param2];
     }
 }
 
@@ -128,12 +132,12 @@ inline void StoreHandler::StoreValuesMethod(opt_ref_wrap<std::vector<T>>& type_v
 }
 
 template <typename T> inline ArgParser& ArgParser::Default(T value) { 
-    commands.back().param2 += ("=" + std::to_string(value));
+    current_cmd->param2 += ("=" + std::to_string(value));
     return *this;
 }
 template<> inline ArgParser& ArgParser::Default<const char*>(const char* value) { 
     std::string val = value;
-    commands.back().param2 += ("=" + val);
+    current_cmd->param2 += ("=" + val);
     return *this;
 }
 }

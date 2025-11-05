@@ -6,68 +6,81 @@
 #include <ArgParser.hpp>
 
 namespace ArgumentParser {
-ArgParser& ArgParser::MultiValue(int min_args_count) {  
-    commands.back().min_args_count = min_args_count;
-    return *this; 
-}
 
 ArgParser& ArgParser::Positional() {
+    current_cmd->positional = true;
     return *this;
 }  
 
 bool ArgParser::Parse(std::vector<std::string> v) {
     if (!split_string.empty())
         split_string = v;
-    for (int i = 0; i < commands.size(); ++i) {
-        if (commands[i].type == CommandType::INT_T || commands[i].type == CommandType::STRING_T)
-            commands[i].min_args_count = 1;
-    }
     for (int i = 0; i < split_string.size(); ++i) {
         if (!IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-")) 
-            continue; 
-
-        size_t index_equal_sign = split_string[i].find('=');
-        if (index_equal_sign == std::string::npos)
             continue;
-        split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_equal_sign + 1));
-        split_string[i] = split_string[i].substr(0, index_equal_sign);
-
+        size_t index_equal_sign = split_string[i].find('=');
+        if (index_equal_sign != std::string::npos) {
+            split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_equal_sign + 1));
+            split_string[i] = split_string[i].substr(0, index_equal_sign);
+            continue;
+        }
         if (IsCommand(split_string[i].c_str(), "--"))
             continue;
         while (split_string[i].size() > 2) {
             int index_last_command = split_string[i].size() - 1;
-            split_string.insert(split_string.begin() + i + 1, split_string[i].substr(index_last_command));
+            split_string.insert(split_string.begin() + i + 1, "-" + split_string[i].substr(index_last_command));
             split_string[i] = split_string[i].substr(0, index_last_command);    
         }
     }
-    for (int i = 0;  i < split_string.size(); ++i) {
+    for (std::string s: split_string) {
+        std::cout << s << " ";
+    }
+    for (int i = 0;  i < split_string.size(); ++i) {//если некоманды будут идти первыми//если у команд нет аргументов 
         if (!IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-")) 
             continue;
-
-        auto it = std::find_if(commands.begin(), commands.end(), [&](const Command& cmd) {
-            return (split_string[i].size() > 2 && split_string[i].substr(2) == cmd.param2) || 
-                (split_string[i].size() > 1 && split_string[i][1] == cmd.param1);});
-
+        auto it_long = commands.find(split_string[i].substr(2));
+        auto it_short = std::find_if(commands.begin(), commands.end(), 
+            [&](const auto& pair) { 
+                const Command& cmd = pair.second;
+                return cmd.param1 == split_string[i][1];
+        });
+        auto it = (it_short != commands.end()) ? it_short : (it_long != commands.end()) ? it_long : commands.end();
         if (it == commands.end()) {
-            std::cout << "unreserved command" << std::endl;
+            std::cout << "unreserved command " << split_string[i] << std::endl;
             return false;
+        }
+        if (it->second.min_args_count) {
+            while (i < split_string.size() - 1 && 
+                !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-")) {
+                    it->second.args.push_back(split_string[++i]);
+            }
+            continue;
+        }
+        if (i < split_string.size() - 1 && 
+            !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-"))
+            it->second.args.push_back(split_string[++i]);
+
+        auto it_p = std::find_if(commands.begin(), commands.end(), [&](const auto& pair) {return pair.second.positional;});
+            if (it_p == commands.end()) {
+                std::cout << "extra arguments" << std::endl;
+                return false;
         }
         while (i < split_string.size() - 1 && 
             !IsCommand(split_string[i + 1].c_str(), "--") && !IsCommand(split_string[i + 1].c_str(), "-")) {
-            it->args.push_back(split_string[++i]);
+            it_p->second.args.push_back(split_string[++i]);
         }
-        if (it->args.size() < it->min_args_count) {
+        if (it->second.args.size() < it->second.min_args_count) {
             std::cout << "min args doeesnt have huy" << std::endl;
             return false;
         }
     }
-    // for (int i = 0; i < commands.size(); ++i) {
-    //     std::cout << commands[i].param2 << " ";
-    //     for (int j = 0; j < commands[i].args.size(); ++j) {
-    //         std::cout << commands[i].args[j] << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
+    for (const auto& [key, cmd]: commands) {
+        std::cout << cmd.param2;
+        for (const auto& arg: cmd.args) {
+            std::cout << " " << arg;
+        }
+        std::cout << std::endl;
+    }
     return true;
 }
 bool ArgParser::Parse(int argc, char *argv[]) {
@@ -107,7 +120,6 @@ ArgParser& ArgParser::AddStringArgument(const std::string& param2, const std::st
 }
 
 ArgParser& ArgParser::AddFlag(const char param1, const std::string& param2, const std::string& description) {
-    std::string x = std::to_string(param1);
     Add(CommandType::FLAG_T, param1, param2, description);
     return *this;
 }
@@ -151,12 +163,23 @@ ArgParser& ArgParser::StoreValues(std::vector<bool>& val) {
     return *this;
 }  
 
+ArgParser& ArgParser::MultiValue(int min_args_count) {  
+    current_cmd->min_args_count = min_args_count;
+    return *this; 
+}
+
 bool ArgParser::Help() {
     return (!commands.empty()) ? true : false;
 }
-void ArgParser::HelpDescription() {
-    for (Command command : commands) {
-        std::cout << command.param1 << " " << command.param2 << " " << command.description;
+std::string ArgParser::HelpDescription() {
+    std::string description(3, '\n');
+    std::string dashs(50, '=');
+    description += (dashs + '\n');
+    for (const auto& [key, cmd]: commands) {
+        if (cmd.type == CommandType::HELP_T)
+            description += ("-" + std::string(1, cmd.param1) + " || --" + cmd.param2 + " || " + cmd.description + "\n");
     }
+    description += (dashs + '\n');
+    return description;
 }   
 }

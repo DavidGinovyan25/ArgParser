@@ -84,7 +84,7 @@ public:
 
 namespace ArgumentParser {
 inline std::optional<std::string> GetMethodsHandler::GetFlagValue(const std::string& flag, int index) {
-    for (const auto& [key, cmd] : commands) {
+    for (const auto& [key, cmd] : commands_dict) {
         if (flag == cmd.param2 && index < cmd.args.size())
             return cmd.args[index];
     }
@@ -97,8 +97,9 @@ inline void AddMethodsHandler::Add(
         const std::string& param2, 
         const std::string& description) {
     if (!IsReservedCommand(std::string(1, param1)) && !IsReservedCommand(param2)) {
-        commands[param2] = Command{.type = type, .param1 = param1, .param2 = param2, .description = description};
-        current_cmd = &commands[param2];
+        commands_list.push_back({.type = type, .param1 = param1, .param2 = param2, .description = description});
+        commands_dict[param2] = commands_list.back();
+        current_cmd = &commands_dict[param2];
     }
     
 }
@@ -107,8 +108,9 @@ inline void AddMethodsHandler::Add(
         const std::string& param2, 
         const std::string& description) {
     if (!IsReservedCommand(param2)) {
-        commands[param2] = Command{.type = type, .param2 = param2, .description = description};
-        current_cmd = &commands[param2];
+        commands_list.push_back(Command{.type = type, .param2 = param2, .description = description});
+        commands_dict[param2] = commands_list.back();
+        current_cmd = &commands_dict[param2];
     }
 }
 

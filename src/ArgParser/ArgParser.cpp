@@ -2,39 +2,32 @@
 #include <cstring>
 #include <filesystem>
 #include <string>
-
+#include <map>
 #include <ArgParser.hpp>
 
 namespace ArgumentParser {
-
-ArgParser& ArgParser::Positional() {
-    current_cmd->positional = true;
-    return *this;
-}  
-    // for (std::string s: split_string) {
-    //     std::cout << s << " ";
-    // }
-
-    // for (const auto& [key, cmd]: commands) {
-    //     std::cout << cmd.param2;
-    //     for (const auto& arg: cmd.args) {
-    //         std::cout << " " << arg;
-    //     }
-    //     std::cout << std::endl;
-    // }
-
+auto print = [](const std::string& text) {std::cout << text << std::endl;};
 
 bool ArgParser::Parse(std::vector<std::string> v) {
-    if (!split_string.empty())
-        split_string = v;
+    auto error_handling = [&](bool error_condition, const char* error_type) {
+        if (!error_condition) return false; std::cout << error_type << std::endl; return true;};
 
-    auto is_not_command = [&](int i){
+    auto is_not_command = [&](int i) {
         return !IsCommand(split_string[i].c_str(), "--") && !IsCommand(split_string[i].c_str(), "-");};
 
     auto tokenize = [&](int start, int finish, int i) {
         split_string.insert(split_string.begin() + i + 1, split_string[i].substr(start));
         split_string[i] = split_string[i].substr(0, finish);};
 
+    if (commands_list.empty())
+        return error_handling(true, "Empty commands_list");    
+
+    if (!split_string.empty())
+        split_string = v;
+    
+    if (split_string.empty())
+        return error_handling(true, "Empty split_string");
+        
     for (int i = 0; i < split_string.size(); ++i) {
         if (is_not_command(i)) 
             continue;
@@ -49,40 +42,65 @@ bool ArgParser::Parse(std::vector<std::string> v) {
             tokenize(split_string[i].size() - 1, split_string[i].size() - 1, i);   
         }
     }
+
+    auto is_arg = [&](int& i){return i < split_string.size() - 1 && is_not_command(i + 1);};
+    auto add_arg = [&](int& i, auto& it){if(is_arg(i))it->second.args.push_back(split_string[++i]);};
+    auto add_args = [&](int& i, auto& it){while(is_arg(i)) {add_arg(i, it);}};
+    auto vec_pos_com = commands_list.begin();
+
     for (int i = 0;  i < split_string.size(); ++i) {//если некоманды будут идти первыми//если у команд нет аргументов
-        if (is_not_command(i)) 
-            continue;
+        if (is_not_command(i)) {
+            vec_pos_com = std::find_if(vec_pos_com, commands_list.end(), 
+                [&](const Command& cmd){return cmd.positional;});
 
-        auto it_long = commands.find(split_string[i].substr(2));
-        auto it_short = std::find_if(commands.begin(), commands.end(), 
-            [&](const auto& pair) {return pair.second.param1 == split_string[i][1];});
-        auto it = (it_short != commands.end()) ? it_short : (it_long != commands.end()) ? it_long : commands.end();
-        if (it == commands.end()) {
-            std::cout << "unreserved command " << split_string[i] << std::endl;
-            return false;
-        }
-        if (it->second.min_args_count) {
-            while (i < split_string.size() - 1 && is_not_command(i + 1)) {
-                it->second.args.push_back(split_string[++i]);
-            }
+            if (vec_pos_com == commands_list.end())
+                return error_handling(true, "extra arguments");
+
+            auto map_pos_com = commands_dict.find(vec_pos_com->param2);
+            ++vec_pos_com;
+            add_args(i, map_pos_com);
+            map_pos_com->second.args.insert(map_pos_com->second.args.begin(), split_string[0]);
             continue;
         }
-        if (i < split_string.size() - 1 && is_not_command(i + 1))
-            it->second.args.push_back(split_string[++i]);
+        auto it_long_command = commands_dict.find(split_string[i].substr(2));
+        auto it_short_command = std::find_if(commands_dict.begin(), commands_dict.end(), 
+            [&](const auto& pair){return pair.second.param1 == split_string[i][1];});
 
-        auto it_p = std::find_if(commands.begin(), commands.end(), 
-            [&](const auto& pair) {return pair.second.positional;});
-        if (it_p == commands.end()) {
-            std::cout << "extra arguments" << std::endl;
-            return false;
+        auto it_map = (it_short_command != commands_dict.end())
+            ? it_short_command 
+            : (it_long_command != commands_dict.end()) ? it_long_command : commands_dict.end();
+
+        if (it_map == commands_dict.end()) 
+            return error_handling(true, "unreserved command");
+                
+        if (it_map->second.multivalue) {
+            add_args(i, it_map);
+            if (it_map->second.args.size() < it_map->second.min_args_count)
+                return error_handling(true, "min args doesnt have");
+            continue;
         }
-        while (i < split_string.size() - 1 && is_not_command(i + 1)) {
-            it_p->second.args.push_back(split_string[++i]);
+        add_arg(i, it_map);
+        if (is_arg(i)) {
+            vec_pos_com = std::find_if(vec_pos_com, commands_list.end(), 
+                [&](const Command& cmd){return cmd.positional;});
+
+            if (vec_pos_com == commands_list.end())
+                return error_handling(true, "extra arguments");
+
+            auto map_pos_com = commands_dict.find(vec_pos_com->param2);
+            ++vec_pos_com;
+            add_args(i, map_pos_com);
+            if (map_pos_com->second.args.size() < map_pos_com->second.min_args_count)
+                return error_handling(true, "min args doesnt have");
         }
-        if (it->second.args.size() < it->second.min_args_count) {
-            std::cout << "min args doeesnt have huy" << std::endl;
-            return false;
+    }
+
+    for (const auto& [key, cmd]: commands_dict) {
+        std::cout << cmd.param2;
+        for (const auto& arg: cmd.args) {
+            std::cout << " " << arg;
         }
+        std::cout << std::endl;
     }
     return true;
 }
@@ -97,11 +115,11 @@ std::optional<std::string> ArgParser::GetStringValue(const std::string& param, i
     return GetFlagValue(param, index);
 }
 std::optional<int> ArgParser::GetIntValue(const std::string& param, int index) {
-    return (GetFlagValue(param, index) != std::nullopt) 
+    return GetFlagValue(param, index).has_value()
         ? std::optional<int>{std::strtol(kStringMissingValue, nullptr, 10)} : std::nullopt;
 }
 bool ArgParser::GetFlag(const std::string& param) {
-    return (GetFlagValue(param, 0) != std::nullopt) ? true : false;
+    return GetFlagValue(param, 0).has_value();
 }
 
 ArgParser& ArgParser::AddIntArgument(const char param1, const std::string& param2, const std::string& description) {
@@ -168,17 +186,26 @@ ArgParser& ArgParser::StoreValues(std::vector<bool>& val) {
 
 ArgParser& ArgParser::MultiValue(int min_args_count) {  
     current_cmd->min_args_count = min_args_count;
+    current_cmd->multivalue = true;
+    commands_list.back().min_args_count = min_args_count;
+    commands_list.back().multivalue = true;
     return *this; 
 }
 
+ArgParser& ArgParser::Positional() {
+    current_cmd->positional = true;
+    commands_list.back().positional = true;
+    return *this;
+}  
+
 bool ArgParser::Help() {
-    return (!commands.empty()) ? true : false;
+    return (!commands_dict.empty()) ? true : false;
 }
 std::string ArgParser::HelpDescription() {
     std::string description(3, '\n');
     std::string dashs(50, '=');
     description += (dashs + '\n');
-    for (const auto& [key, cmd]: commands) {
+    for (const auto& [key, cmd]: commands_dict) {
         if (cmd.type == CommandType::HELP_T)
             description += ("-" + std::string(1, cmd.param1) + " || --" + cmd.param2 + " || " + cmd.description + "\n");
     }

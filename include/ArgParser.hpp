@@ -5,41 +5,39 @@
 #include "ArgumentParser.hpp"
 
 namespace ArgumentParser {
-class StoreHandler {
+class StorageHandler {
 public:
-    template<typename T>
-    using opt_ref_wrap = std::optional<std::reference_wrapper<T>>;
+    void operator()(std::reference_wrapper<int> stored_ref, const std::vector<std::string>& args) {
+        if (!args.empty())
+            stored_ref.get() = std::strtol(args[0].c_str(), nullptr, 10);
+    }
+    void operator()(std::reference_wrapper<std::string> stored_ref, const std::vector<std::string>& args) {
+        if (!args.empty()) 
+            stored_ref.get() = args[0];
+    }
+    void operator()(std::reference_wrapper<bool> stored_ref, const std::vector<std::string>& args) {
+        stored_ref.get() = true;
+    }
+    void operator()(std::reference_wrapper<std::vector<int64_t>> stored_ref, const std::vector<std::string>& args) {
+        for (const auto& arg : args) {
+            stored_ref.get().push_back(std::strtoll(arg.c_str(), nullptr, 10));
+        }
+    }
+    void operator()(std::reference_wrapper<std::vector<std::string>> stored_ref, const std::vector<std::string>& args) {
+        stored_ref.get() = args;
+    }
+    void operator()(std::reference_wrapper<std::vector<bool>> stored_ref, const std::vector<std::string>& args) {
+        for (const auto& arg : args) {
+            stored_ref.get().push_back(true);
+        }
+    }
+};    
 
-    opt_ref_wrap<int> int_value_ref;
-    opt_ref_wrap<std::string> string_value_ref;
-    opt_ref_wrap<bool> bool_value_ref;
-
-    opt_ref_wrap<std::vector<int64_t>> int_values_ref;
-    opt_ref_wrap<std::vector<std::string>> string_values_ref;
-    opt_ref_wrap<std::vector<bool>> bool_values_ref;
-
-    template <typename T> void StoreValueMethod(opt_ref_wrap<T>& type_value_ref, T& val);
-    template <typename T> void StoreValuesMethod(opt_ref_wrap<std::vector<T>>& type_values_ref, std::vector<T>& val);
-};
-
-class GetMethodsHandler : public virtual CommandHandler  {
-public:  
-    static constexpr int kIntMissingValue = -1;
-    static constexpr const char* kStringMissingValue = "[MISSING VALUE]";
-    std::optional<std::string> GetFlagValue(const std::string& flag, int index = 0);
-};
-
-class AddMethodsHandler : public virtual CommandHandler {
+class ArgParser : public CommandManager {
 public:
-    Command* current_cmd = nullptr;
-    void Add(CommandType type, const char param1, const std::string& param2, const std::string& description = "");
-    void Add(CommandType type, const std::string& param2, const std::string& description = "");
-};
-
-class ArgParser : public AddMethodsHandler, public GetMethodsHandler  {
-public:
-    StoreHandler store_handler;
     std::vector<std::string> split_string;
+    StorageHandler storage_handler;
+    std::string program_name;
 public:
     std::string name;
     ArgParser(std::string s) : name(std::move(s)) {}
@@ -60,13 +58,13 @@ public:
     template<typename T> 
     ArgParser& Default(T value);
         
-    ArgParser& StoreValue(int& val);
-    ArgParser& StoreValue(std::string& val);
-    ArgParser& StoreValue(bool& val);
-
-    ArgParser& StoreValues(std::vector<int64_t>& val);
-    ArgParser& StoreValues(std::vector<std::string>& val);
-    ArgParser& StoreValues(std::vector<bool>& val);
+    ArgParser& StoreValue(int& value);
+    ArgParser& StoreValue(std::string& value);
+    ArgParser& StoreValue(bool& value);
+    
+    ArgParser& StoreValues(std::vector<int64_t>& values);
+    ArgParser& StoreValues(std::vector<std::string>& values);
+    ArgParser& StoreValues(std::vector<bool>& values);
 
     ArgParser& AddIntArgument(const char param1, const std::string& param2, const std::string& description = "");
     ArgParser& AddIntArgument(const std::string& param2, const std::string& description = "");
@@ -83,63 +81,15 @@ public:
 }
 
 namespace ArgumentParser {
-inline std::optional<std::string> GetMethodsHandler::GetFlagValue(const std::string& flag, int index) {
-    for (const auto& [key, cmd] : commands_dict) {
-        if (flag == cmd.param2 && index < cmd.args.size())
-            return cmd.args[index];
-    }
-    return std::nullopt;
-}
-
-inline void AddMethodsHandler::Add(
-        CommandType type, 
-        const char param1, 
-        const std::string& param2, 
-        const std::string& description) {
-    if (!IsReservedCommand(std::string(1, param1)) && !IsReservedCommand(param2)) {
-        commands_list.push_back({.type = type, .param1 = param1, .param2 = param2, .description = description});
-        commands_dict[param2] = commands_list.back();
-        current_cmd = &commands_dict[param2];
-    }
-    
-}
-inline void AddMethodsHandler::Add(
-        CommandType type, 
-        const std::string& param2, 
-        const std::string& description) {
-    if (!IsReservedCommand(param2)) {
-        commands_list.push_back(Command{.type = type, .param2 = param2, .description = description});
-        commands_dict[param2] = commands_list.back();
-        current_cmd = &commands_dict[param2];
-    }
-}
-
-template <typename T> 
-inline void StoreHandler::StoreValueMethod(opt_ref_wrap<T>& type_value_ref, T& value) {
-    static_assert(
-            std::is_same_v<T, int> || 
-            std::is_same_v<T, std::string> || 
-            std::is_same_v<T, bool>,
-            "StoreValueMethodError: can supporte only int, std::string, bool types");
-    type_value_ref = std::ref(value);
-}
-template <typename T> 
-inline void StoreHandler::StoreValuesMethod(opt_ref_wrap<std::vector<T>>& type_values_ref, std::vector<T>& values) {
-    static_assert(
-            std::is_same_v<T, int64_t> || 
-            std::is_same_v<T, std::string> || 
-            std::is_same_v<T, bool>,
-            "StoreValueMethodError: can supporte only int, std::string, bool types");
-    type_values_ref = std::ref(values);
-}
-
 template <typename T> inline ArgParser& ArgParser::Default(T value) { 
-    current_cmd->param2 += ("=" + std::to_string(value));
+    current_cmd->args.push_back(std::to_string(value));
+    commands_list.back().args.push_back(std::to_string(value));
     return *this;
 }
 template<> inline ArgParser& ArgParser::Default<const char*>(const char* value) { 
     std::string val = value;
-    current_cmd->param2 += ("=" + val);
+    current_cmd->args.push_back(value);
+    commands_list.back().args.push_back(value);
     return *this;
 }
 }

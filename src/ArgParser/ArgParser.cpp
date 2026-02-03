@@ -54,38 +54,6 @@ ArgParser& ArgParser::AddHelp(const std::string& param2, const std::string& desc
     return *this;
 } 
 
-ArgParser& ArgParser::StoreValue(int& value) {
-    commands_list.back().store_ref = std::ref(value);
-    current_cmd->store_ref = std::ref(value);
-    return *this;
-}
-ArgParser& ArgParser::StoreValue(std::string& value) {
-    commands_list.back().store_ref = std::ref(value);
-    current_cmd->store_ref = std::ref(value);
-    return *this;
-}
-ArgParser& ArgParser::StoreValue(bool& value) {
-    commands_list.back().store_ref = std::ref(value);
-    current_cmd->store_ref = std::ref(value);
-    return *this;
-}
-
-ArgParser& ArgParser::StoreValues(std::vector<int64_t>& values) {
-    commands_list.back().store_ref = std::ref(values);
-    current_cmd->store_ref = std::ref(values);
-    return *this;
-}
-ArgParser& ArgParser::StoreValues(std::vector<std::string>& values) {
-    commands_list.back().store_ref = std::ref(values);
-    current_cmd->store_ref = std::ref(values);
-    return *this;
-}
-ArgParser& ArgParser::StoreValues(std::vector<bool>& values) {
-    commands_list.back().store_ref = std::ref(values);
-    current_cmd->store_ref = std::ref(values);
-    return *this;
-}
-
 ArgParser& ArgParser::MultiValue(int min_args_count) {  
     current_cmd->min_args_count = min_args_count;
     current_cmd->multivalue = true;

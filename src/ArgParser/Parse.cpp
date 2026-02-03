@@ -62,6 +62,9 @@ bool ArgParser::Parse(std::vector<std::string> v) {
     auto add_arg = [&](int& i, auto& it){if (is_arg(i)) it->second.args.push_back(split_string[++i]);};
     auto add_args = [&](int& i, auto& it){while(is_arg(i)) {add_arg(i, it);}};
     auto check_default = [&](int i, auto it){if(!it->second.args.empty()) it->second.args.erase(it->second.args.begin());};
+    auto add_positional_arguments = [](){
+        
+    };
 
     auto vec_pos_com = commands_list.begin();
     for (int i = 0; i < split_string.size(); ++i) {
@@ -108,8 +111,7 @@ bool ArgParser::Parse(std::vector<std::string> v) {
             auto map_pos_com = commands_dict.find(vec_pos_com->param2);
             ++vec_pos_com;
             add_args(i, map_pos_com);
-            if (error_handling(
-                    map_pos_com->second.args.size() < map_pos_com->second.min_args_count, "min args doesnt have"))
+            if (error_handling(map_pos_com->second.args.size() < map_pos_com->second.min_args_count, "min args doesnt have"))
                 return false;
 
             if (error_handling(!map_pos_com->second.multivalue || it_map->second.args.size() > 1, "extra argunemts"))
@@ -120,19 +122,9 @@ bool ArgParser::Parse(std::vector<std::string> v) {
         cmd.args = commands_dict[cmd.param2].args;
     }    
     for (auto& cmd : commands_list) {
-        if (cmd.store_ref.has_value()) {
+        if (cmd.store_ref.has_value())
             std::visit([&](auto&& stored_ref) {storage_handler(stored_ref, cmd.args);}, cmd.store_ref.value());
-        }
     }
-// for (auto& [key, cmd] : commands_dict) {
-//     if (cmd.args.empty()) {
-//         std::cout << key << " " << cmd.param1 << std::endl;
-//     } else {
-//         for (size_t i = 0; i < cmd.args.size(); ++i) {
-//             std::cout << key << " " << cmd.param1 << " " << cmd.args[i] << std::endl;
-//         }
-//     }
-// }
     return true;
 }
 bool ArgParser::Parse(int argc, char *argv[]) {

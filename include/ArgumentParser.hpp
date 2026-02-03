@@ -18,7 +18,7 @@ using ref_type = std::optional<std::variant<
         std::reference_wrapper<std::vector<std::string>>,
         std::reference_wrapper<std::vector<bool>>>>;
 
- struct Command {
+struct Command {
     CommandType type;
     char param1;
     std::string param2;

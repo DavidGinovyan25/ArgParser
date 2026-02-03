@@ -58,13 +58,10 @@ public:
     template<typename T> 
     ArgParser& Default(T value);
         
-    ArgParser& StoreValue(int& value);
-    ArgParser& StoreValue(std::string& value);
-    ArgParser& StoreValue(bool& value);
-    
-    ArgParser& StoreValues(std::vector<int64_t>& values);
-    ArgParser& StoreValues(std::vector<std::string>& values);
-    ArgParser& StoreValues(std::vector<bool>& values);
+    template <typename T>
+    ArgParser& StoreValue(T& value);
+    template <typename T>
+    ArgParser& StoreValues(T& values);
 
     ArgParser& AddIntArgument(const char param1, const std::string& param2, const std::string& description = "");
     ArgParser& AddIntArgument(const std::string& param2, const std::string& description = "");
@@ -82,14 +79,27 @@ public:
 
 namespace ArgumentParser {
 template <typename T> inline ArgParser& ArgParser::Default(T value) { 
-    current_cmd->args.push_back(std::to_string(value));
-    commands_list.back().args.push_back(std::to_string(value));
+    std::string val;
+    if constexpr (std::is_same_v<T, const char*>) {
+        val = value; 
+    } else {
+        val = std::to_string(value);
+    }
+    current_cmd->args.push_back(val);
+    commands_list.back().args.push_back(val);
     return *this;
 }
-template<> inline ArgParser& ArgParser::Default<const char*>(const char* value) { 
-    std::string val = value;
-    current_cmd->args.push_back(value);
-    commands_list.back().args.push_back(value);
+
+template <typename T>
+ArgParser& ArgParser::StoreValue(T& value) {
+    commands_list.back().store_ref = std::ref(value);
+    current_cmd->store_ref = std::ref(value);
+    return *this;
+}
+template <typename T>
+ArgParser& ArgParser::StoreValues(T& values) {
+    commands_list.back().store_ref = std::ref(values);
+    current_cmd->store_ref = std::ref(values);
     return *this;
 }
 }

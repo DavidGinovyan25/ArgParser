@@ -1,6 +1,3 @@
-# tests/CMakeLists.txt
-
-# Находим GoogleTest
 find_package(GTest REQUIRED)
 
 add_executable(argparser_test

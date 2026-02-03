@@ -1,27 +1,18 @@
 #include <sstream>
 #include <fstream>
-
+#include <iostream>
 #include <gtest/gtest.h>
 
 #include "ArgParser.hpp"
 
 using namespace ArgumentParser;
-
-/*
-    Функция принимает в качество аргумента строку, разделяет ее по "пробелу"
-    и возвращает вектор полученных слов
-*/
 std::vector<std::string> SplitString(const std::string& str) {
     std::istringstream iss(str);
-
     return {std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>()};
-    //vector with two arguments - begin and end
 }
-
 
 TEST(ArgParserTestSuite, EmptyTest) {
     ArgParser parser("My Empty Parser");
-
     ASSERT_TRUE(parser.Parse(SplitString("app")));
 }
 
@@ -126,8 +117,8 @@ TEST(ArgParserTestSuite, FlagsTest) {
     ArgParser parser("My Parser");
     bool flag3;
     parser.AddFlag('a', "flag1");
-    parser.AddFlag('b', "flag2").Default(true);
-    parser.AddFlag('c', "flag3").StoreValue(flag3);
+    parser.AddFlag('c', "flag3").Default(true);
+    parser.AddFlag('b', "flag2").StoreValue(flag3);
 
     ASSERT_TRUE(parser.Parse(SplitString("app -ac")));
     ASSERT_TRUE(parser.GetFlag("flag1"));
@@ -157,7 +148,7 @@ TEST(ArgParserTestSuite, PositionalAndNormalArgTest) {
 
     ASSERT_TRUE(parser.Parse(SplitString("app -n 0 1 2 3 4 5 -f")));
     ASSERT_TRUE(parser.GetFlag("flag"));
-    ASSERT_EQ(parser.GetIntValue("number"), 0);
+    ASSERT_EQ(parser.GetIntValue("Param1", 4), 5);
     ASSERT_EQ(values[0], 1);
     ASSERT_EQ(values[2], 3);
     ASSERT_EQ(values.size(), 5);
@@ -172,13 +163,13 @@ TEST(ArgParserTestSuite, RepeatedParsingTest) {
     parser.AddFlag('s', "flag1", "Read first number");
     parser.AddFlag('p', "flag2", "Read second number");
     parser.AddIntArgument("number", "Some Number");
-
+    
     ASSERT_TRUE(parser.Parse(SplitString("app --number 2 -s -i test -o=test")));
 
     if (parser.GetFlag("flag1")) {
-      parser.AddIntArgument("first", "First Number");
+        parser.AddIntArgument("first", "First Number");
     } else if (parser.GetFlag("flag2")) {
-      parser.AddIntArgument("second", "Second Number");
+        parser.AddIntArgument("second", "Second Number");
     }
 
     ASSERT_TRUE(parser.Parse(SplitString("app --number 2 -s -i test -o=test --first=52")));
@@ -191,7 +182,7 @@ TEST(ArgParserTestSuite, HelpTest) {
     parser.AddHelp('h', "help", "Some Description about program");
 
     ASSERT_TRUE(parser.Parse(SplitString("app --help")));
-    //ASSERT_TRUE(parser.Help());
+    ASSERT_TRUE(parser.Help());
 }
 
 TEST(ArgParserTestSuite, Multivalue) {
@@ -210,4 +201,9 @@ TEST(ArgParseTestSuite, MinArgs) {
     parser.AddIntArgument('n', "numbers").MultiValue(3);
     parser.AddStringArgument('s', "strings").MultiValue(1);
     ASSERT_TRUE(parser.Parse(SplitString("app -n 1 2 3 -s hello")));
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
